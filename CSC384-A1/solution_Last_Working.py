@@ -78,6 +78,11 @@ def _shortest_manhattan(box, storages):
 
 # TODO: global variables for alternate heurisitc
 
+# hash columns to storage coordinates
+matrix_to_storage = {}
+matrix_to_box = {}
+# Pattern DB? Store parent's heuristics and use this to quickly calculate successors???
+pattern_db = {}
 #TODO: build up and tear down of all globals before and after search!
 cost_db = {}
 
@@ -90,13 +95,39 @@ def heur_alternate(state):
     #Write a heuristic function that improves upon heur_manhattan_distance to estimate distance between the current state and the goal.
     #Your function should return a numeric value for the estimate of the distance to the goal.
 
-    # if the parent state heuristic is not in the Pattern DB, derive manhattan
-    if state.parent is None or state.parent.hashable_state not in cost_db:
+    # if the parent state heuristic is in the Pattern DB, use state.action to derive heuristic
+    if state.parent is None or state.parent.hashable_state not in pattern_db:
         # populate matrix to box dictionary
-        new_cost = heur_manhattan_distance(state)
+        matrix_to_box = {}
+        row_index = 0
+        for box in state.boxes:
+            matrix_to_box[row_index] = box
+            row_index += 1
+        # populate matrix to storage dictionary
+        column_index = 0
+        for box in state.storage:
+            matrix_to_storage[column_index] = box
+            column_index += 1
+        matrix = [[0 for x in range(0, column_index)] for x in range(0, row_index)]
+        # populate matrix
+        for row in range(0,row_index):
+            for column in range (0, column_index):
+                # if valid storage, find cost
+                if state.restrictions is None or matrix_to_storage[column] in state.restrictions[state.boxes[matrix_to_box[row]]]:
+                    matrix[row][column] = abs(matrix_to_box[row][0] - matrix_to_storage[column][0]) + abs(matrix_to_box[row][1] - matrix_to_storage[column][1])
+                # else set cost as infinity
+                else:
+                    matrix[row][column] = float("inf")
+
+        # use hungarian algorithm and return minimum cost as heuristic value
+        m = Munkres()
+        indexes = m.compute(matrix)
+        total = 0
+        for row, column in indexes:
+            value = matrix[row][column]
+            total += value
         if state.hashable_state not in cost_db:
-            cost_db[state.hashable_state] = new_cost
-        return new_cost
+            cost_db[state.hashable_state] = total
     # else, derive heuristic directly
     else:
         # depending on the action, we can determine whether the robot moved a box
@@ -105,153 +136,50 @@ def heur_alternate(state):
         # and thus determine where the box is now.
         # thus we simply have to update the manhattan distances for a single row then call hungarian algorithm again
         # if the robot in current state is occupying a box coordinate in the previous state, it has moved that box
-        old_moved_box_coord = state.robot
-        new_moved_box_coord = state.robot
-        old_shortest = 0
-        new_shortest = 0
-        old_cost = cost_db[state.parent.hashable_state]
+        matrix = [row[:] for row in pattern_db[state.parent.hashable_state]]
+        moved_box_coord = state.robot
         # robot moved a box!
         if state.robot in state.parent.boxes:
             # find which direction the robot has pushed the box to deduce box's new coordinates
             # up
             if state.parent.robot[1] > state.robot[1]:
-                new_moved_box_coord = (state.robot[0], state.robot[1] - 1)
+                moved_box_coord = (state.robot[0], state.robot[1] - 1)
             # down
             elif state.parent.robot[1] < state.robot[1]:
-                new_moved_box_coord = (state.robot[0], state.robot[1] + 1)
+                moved_box_coord = (state.robot[0], state.robot[1] + 1)
             # left
             elif state.parent.robot[0] > state.robot[0]:
-                new_moved_box_coord = (state.robot[0] - 1, state.robot[1])
+                moved_box_coord = (state.robot[0] - 1, state.robot[1])
             # right
             elif state.parent.robot[0] < state.robot[0]:
-                new_moved_box_coord = (state.robot[0] + 1, state.robot[1])
+                moved_box_coord = (state.robot[0] + 1, state.robot[1])
+            # find row corresponding to moved box
+            moved_box_row = [ key for key,val in matrix_to_box.items() if val==state.robot ][0]
+            # TODO: can remove the if statements for hashing to make faster?
             # update coordinate of box
-
-            # at this point, we know the previous and new coordinates of the ONLY box that was moved.
-            # since the storage coordinates don't change between states
-
-            # use helper to find shortest manhattan distance between the box and available storage spaces and compare it to the previous location's
-            # update the total heuristic cost accordingly
-            if state.restrictions is not None:
-                old_shortest += _shortest_manhattan(old_moved_box_coord, state.restrictions[state.parent.boxes[old_moved_box_coord]])
-                new_shortest += _shortest_manhattan(new_moved_box_coord, state.restrictions[state.boxes[new_moved_box_coord]])
-            # no restrictions, check all storages and update total
-            else:
-                old_shortest += _shortest_manhattan(old_moved_box_coord, state.storage)
-                new_shortest += _shortest_manhattan(new_moved_box_coord, state.storage)
-
-            new_cost = old_cost + (new_shortest - old_cost)
-            return new_cost
+            # TODO: make a hashmap for each box and it's index so that we don't have to know it by it's coordinates... like since for every game
+            # TODO: we only have one set of boxes..lets find a way to identify them. maybe make a box type or a NAMED TUPLE?
+            ma[moved_box_row] = moved_box_coord
+            if state.hashable_state not in pattern_db_boxes:
+                pattern_db_boxes[state.hashable_state] = copy.deepcopy(boxes)
+            # update row in matrix
+            for x in range(0, len(matrix_to_storage)):
+                matrix[moved_box_row][x] = abs(moved_box_coord[0] - matrix_to_storage[x][0]) + abs(moved_box_coord[1] - matrix_to_storage[x][1])
+            # hash the matrix
+            if state.hashable_state not in pattern_db:
+                pattern_db[state.hashable_state] = [row[:] for row in matrix]
+            # use hungarian algorithm to find cost
+            m = Munkres()
+            indexes = m.compute(matrix)
+            total = 0
+            for row, column in indexes:
+                value = matrix[row][column]
+                total += value
+        # no moved box, return same cost
         else:
-            return old_cost
+            total = cost_db[state.parent.hashable_state]
 
-def fval_function(sN, weight):
-#IMPLEMENT
-    """
-    Provide a custom formula for f-value computation for Anytime Weighted A star.
-    Returns the fval of the state contained in the sNode.
-
-    @param sNode sN: A search node (containing a SokobanState)
-    @param float weight: Weight given by Anytime Weighted A star
-    @rtype: float
-    """
-
-    #Many searches will explore nodes (or states) that are ordered by their f-value.
-    #For UCS, the fvalue is the same as the gval of the state. For best-first search, the fvalue is the hval of the state.
-    #You can use this function to create an alternate f-value for states; this must be a function of the state and the weight.
-    #The function must return a numeric f-value.
-    #The value will determine your state's position on the Frontier list during a 'custom' search.
-    #You must initialize your search engine object as a 'custom' search engine if you supply a custom fval function.
-
-    # f(node) = g(node) +w * h(node)
-    return sN.gval + (weight * sN.hval)
-
-def anytime_gbfs(initial_state, heur_fn, timebound = 10):
-#IMPLEMENT
-    '''Provides an implementation of anytime greedy best-first search, as described in the HW1 handout'''
-    '''INPUT: a sokoban state that represents the start state and a timebound (number of seconds)'''
-    '''OUTPUT: A goal state (if a goal is found), else False'''
-    # GBestFS is an implementation of BestFS with f(n) = h(n)
-    se = SearchEngine('best_first', 'full')
-    se.init_search(initial_state, goal_fn=sokoban_goal_state, heur_fn=heur_fn)
-    # record time anytime_gbfs was called
-    start_time = os.times()[0]
-    # run first iteration of search, set initial costbound for pruning
-    goal_state = se.search(timebound)
-    # check if goal_state returned
-    if goal_state:
-        costbound = goal_state.gval
-        time_left = timebound - (os.times()[0] - start_time)
-        # keep track of best goal state
-        best_state = goal_state
-        # run iterations of anytime_gbfs until time runs out
-        while time_left > 0:
-            initial_time = os.times()[0]
-            new_goal_state = se.search(time_left, costbound=(costbound,float("inf"),float("inf")))
-            # update time left
-            time_left -= os.times()[0] - initial_time
-            # update costbound and best state
-            if new_goal_state:
-                costbound = new_goal_state.gval
-                best_state = new_goal_state
-        # return best goal state
-        return best_state
-    # no goal_state was returned from search, return False
-    else:
-        return False
-
-def anytime_weighted_astar(initial_state, heur_fn, weight=1., timebound = 10):
-#IMPLEMENT
-    '''Provides an implementation of anytime weighted a-star, as described in the HW1 handout'''
-    '''INPUT: a sokoban state that represents the start state and a timebound (number of seconds)'''
-    '''OUTPUT: A goal state (if a goal is found), else False'''
-    se = SearchEngine('custom', 'full')
-    # use lambda expression to create unary weighted fval function
-    wrapped_fval_function = (lambda sN: fval_function(sN, 1))
-    se.init_search(initial_state, goal_fn=sokoban_goal_state, heur_fn=heur_fn, fval_function=wrapped_fval_function)
-    # record time anytime_gbfs was called
-    start_time = os.times()[0]
-    # run first iteration of search, set initial costbound for pruning
-    goal_state = se.search(timebound)
-    # check if goal_state returned
-    if goal_state:
-        costbound = goal_state.gval + heur_fn(goal_state)
-        time_left = timebound - (os.times()[0] - start_time)
-        # keep track of best goal state
-        best_state = goal_state
-        # run iterations of anytime weighted until time runs out
-        while time_left > 0:
-            initial_time = os.times()[0]
-            new_goal_state = se.search(time_left, costbound=(float("inf"),float("inf"),costbound))
-            # update time left
-            time_left -= os.times()[0] - initial_time
-            # update costbound and best state
-            if new_goal_state:
-                costbound = new_goal_state.gval + heur_fn(new_goal_state)
-                best_state = new_goal_state
-        # return best goal state
-        return best_state
-    # no goal_state was returned from search, return False
-    else:
-        return False
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    return total
 
 #######################################################################################################################################################################################################
 # USING CODE FROM SOURCE SPECIFIED BELOW:
@@ -711,31 +639,95 @@ def print_matrix(matrix, msg=None):
 #################################################################################################################################################################################################
 
 
+def fval_function(sN, weight):
+#IMPLEMENT
+    """
+    Provide a custom formula for f-value computation for Anytime Weighted A star.
+    Returns the fval of the state contained in the sNode.
 
+    @param sNode sN: A search node (containing a SokobanState)
+    @param float weight: Weight given by Anytime Weighted A star
+    @rtype: float
+    """
 
+    #Many searches will explore nodes (or states) that are ordered by their f-value.
+    #For UCS, the fvalue is the same as the gval of the state. For best-first search, the fvalue is the hval of the state.
+    #You can use this function to create an alternate f-value for states; this must be a function of the state and the weight.
+    #The function must return a numeric f-value.
+    #The value will determine your state's position on the Frontier list during a 'custom' search.
+    #You must initialize your search engine object as a 'custom' search engine if you supply a custom fval function.
 
+    # f(node) = g(node) +w * h(node)
+    return sN.gval + (weight * sN.hval)
 
+def anytime_gbfs(initial_state, heur_fn, timebound = 10):
+#IMPLEMENT
+    '''Provides an implementation of anytime greedy best-first search, as described in the HW1 handout'''
+    '''INPUT: a sokoban state that represents the start state and a timebound (number of seconds)'''
+    '''OUTPUT: A goal state (if a goal is found), else False'''
+    # GBestFS is an implementation of BestFS with f(n) = h(n)
+    se = SearchEngine('best_first', 'full')
+    se.init_search(initial_state, goal_fn=sokoban_goal_state, heur_fn=heur_fn)
+    # record time anytime_gbfs was called
+    start_time = os.times()[0]
+    # run first iteration of search, set initial costbound for pruning
+    goal_state = se.search(timebound)
+    # check if goal_state returned
+    if goal_state:
+        costbound = goal_state.gval
+        time_left = timebound - (os.times()[0] - start_time)
+        # keep track of best goal state
+        best_state = goal_state
+        # run iterations of anytime_gbfs until time runs out
+        while time_left > 0:
+            initial_time = os.times()[0]
+            new_goal_state = se.search(time_left, costbound=(costbound,float("inf"),float("inf")))
+            # update time left
+            time_left -= os.times()[0] - initial_time
+            # update costbound and best state
+            if new_goal_state:
+                costbound = new_goal_state.gval
+                best_state = new_goal_state
+        # return best goal state
+        return best_state
+    # no goal_state was returned from search, return False
+    else:
+        return False
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+def anytime_weighted_astar(initial_state, heur_fn, weight=1., timebound = 10):
+#IMPLEMENT
+    '''Provides an implementation of anytime weighted a-star, as described in the HW1 handout'''
+    '''INPUT: a sokoban state that represents the start state and a timebound (number of seconds)'''
+    '''OUTPUT: A goal state (if a goal is found), else False'''
+    se = SearchEngine('custom', 'full')
+    # use lambda expression to create unary weighted fval function
+    wrapped_fval_function = (lambda sN: fval_function(sN, 1))
+    se.init_search(initial_state, goal_fn=sokoban_goal_state, heur_fn=heur_fn, fval_function=wrapped_fval_function)
+    # record time anytime_gbfs was called
+    start_time = os.times()[0]
+    # run first iteration of search, set initial costbound for pruning
+    goal_state = se.search(timebound)
+    # check if goal_state returned
+    if goal_state:
+        costbound = goal_state.gval + heur_fn(goal_state)
+        time_left = timebound - (os.times()[0] - start_time)
+        # keep track of best goal state
+        best_state = goal_state
+        # run iterations of anytime weighted until time runs out
+        while time_left > 0:
+            initial_time = os.times()[0]
+            new_goal_state = se.search(time_left, costbound=(float("inf"),float("inf"),costbound))
+            # update time left
+            time_left -= os.times()[0] - initial_time
+            # update costbound and best state
+            if new_goal_state:
+                costbound = new_goal_state.gval + heur_fn(new_goal_state)
+                best_state = new_goal_state
+        # return best goal state
+        return best_state
+    # no goal_state was returned from search, return False
+    else:
+        return False
 
 if __name__ == "__main__":
   #TEST CODE

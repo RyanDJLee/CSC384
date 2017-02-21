@@ -31,12 +31,12 @@ if test_manhattan:
         if man_dist == correct_man_dist[i]:
             solved += 1
         else:
-            unsolved.append(i)    
+            unsolved.append(i)
 
-    print("*************************************")  
-    print("In the problem set provided, you calculated the correct Manhattan distance for {} states out of 10.".format(solved))  
-    print("States that were incorrect: {}".format(unsolved))      
-    print("*************************************\n") 
+    print("*************************************")
+    print("In the problem set provided, you calculated the correct Manhattan distance for {} states out of 10.".format(solved))
+    print("States that were incorrect: {}".format(unsolved))
+    print("*************************************\n")
     ##############################################################
 
 
@@ -48,9 +48,9 @@ if test_anytime_gbfs:
   # TEST ANYTIME GBFS
   print('Testing Anytime GBFS')
 
-  solved = 0; unsolved = []; benchmark = 0; timebound = 8 #8 second time limit 
+  solved = 0; unsolved = []; benchmark = 0; timebound = 8 #8 second time limit
   for i in range(0, 10):
-    print("*************************************")  
+    print("*************************************")
     print("PROBLEM {}".format(i))
 
     s0 = PROBLEMS[i] #Problems get harder as i gets bigger
@@ -58,19 +58,19 @@ if test_anytime_gbfs:
     final = anytime_gbfs(s0, heur_fn=heur_displaced, timebound=timebound)
 
     if final:
-      final.print_path()   
+      final.print_path()
       if final.gval <= len_benchmark[i] or len_benchmark[i] == -99:
         benchmark += 1
-      solved += 1 
+      solved += 1
     else:
-      unsolved.append(i)  
+      unsolved.append(i)
 
-  print("\n*************************************")  
-  print("Of 10 initial problems, {} were solved in less than {} seconds by this solver.".format(solved, timebound))  
-  print("Of the {} problems that were solved, the cost of {} matched or outperformed the benchmark.".format(solved, benchmark))  
-  print("Problems that remain unsolved in the set are Problems: {}".format(unsolved))  
-  print("The benchmark implementation solved 6 out of the 10 practice problems given 8 seconds.")  
-  print("*************************************\n") 
+  print("\n*************************************")
+  print("Of 10 initial problems, {} were solved in less than {} seconds by this solver.".format(solved, timebound))
+  print("Of the {} problems that were solved, the cost of {} matched or outperformed the benchmark.".format(solved, benchmark))
+  print("Problems that remain unsolved in the set are Problems: {}".format(unsolved))
+  print("The benchmark implementation solved 6 out of the 10 practice problems given 8 seconds.")
+  print("*************************************\n")
   ##############################################################
 
 if test_anytime_weighted_astar:
@@ -81,9 +81,9 @@ if test_anytime_weighted_astar:
   # TEST ANYTIME WEIGHTED A STAR
   print('Testing Anytime Weighted A Star')
 
-  solved = 0; unsolved = []; benchmark = 0; timebound = 8 #8 second time limit 
+  solved = 0; unsolved = []; benchmark = 0; timebound = 8 #8 second time limit
   for i in range(0, 10):
-    print("*************************************")  
+    print("*************************************")
     print("PROBLEM {}".format(i))
 
     s0 = PROBLEMS[i] #Problems get harder as i gets bigger
@@ -91,19 +91,19 @@ if test_anytime_weighted_astar:
     final = anytime_weighted_astar(s0, heur_fn=heur_displaced, weight=weight, timebound=timebound)
 
     if final:
-      final.print_path()   
+      final.print_path()
       if final.gval <= len_benchmark[i] or len_benchmark[i] == -99:
         benchmark += 1
-      solved += 1 
+      solved += 1
     else:
-      unsolved.append(i)  
+      unsolved.append(i)
 
-  print("\n*************************************")  
-  print("Of 10 initial problems, {} were solved in less than {} seconds by this solver.".format(solved, timebound))  
-  print("Of the {} problems that were solved, the cost of {} matched or outperformed the benchmark.".format(solved, benchmark))  
-  print("Problems that remain unsolved in the set are Problems: {}".format(unsolved))  
-  print("The benchmark implementation solved 6 out of the 10 practice problems given 8 seconds.")  
-  print("*************************************\n") 
+  print("\n*************************************")
+  print("Of 10 initial problems, {} were solved in less than {} seconds by this solver.".format(solved, timebound))
+  print("Of the {} problems that were solved, the cost of {} matched or outperformed the benchmark.".format(solved, benchmark))
+  print("Problems that remain unsolved in the set are Problems: {}".format(unsolved))
+  print("The benchmark implementation solved 6 out of the 10 practice problems given 8 seconds.")
+  print("*************************************\n")
   ##############################################################
 
 
@@ -115,7 +115,7 @@ if test_fval_function:
 
   ##############################################################
   # TEST fval_function
-  print("*************************************") 
+  print("*************************************")
   print('Testing fval_function')
 
   solved = 0
@@ -126,14 +126,14 @@ if test_fval_function:
 
     fval = fval_function(test_node, weights[i])
     print ('Test', str(i), 'calculated fval:', str(fval), 'correct:', str(correct_fvals[i]))
-    
+
     if fval == correct_fvals[i]:
-      solved +=1  
+      solved +=1
 
 
-  print("\n*************************************")  
-  print("Your fval_function calculated the correct fval for {} out of {} tests.".format(solved, len(correct_fvals)))  
-  print("*************************************\n") 
+  print("\n*************************************")
+  print("Your fval_function calculated the correct fval for {} out of {} tests.".format(solved, len(correct_fvals)))
+  print("*************************************\n")
   ##############################################################
 
 
