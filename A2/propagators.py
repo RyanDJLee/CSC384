@@ -1,7 +1,7 @@
 #Look for #IMPLEMENT tags in this file. These tags indicate what has
-#to be implemented to complete problem solution.  
+#to be implemented to complete problem solution.
 
-'''This file will contain different constraint propagators to be used within 
+'''This file will contain different constraint propagators to be used within
    bt_search.
 
    propagator == a function with the following template
@@ -27,26 +27,26 @@
        return is true if we can continue.
 
       The list of variable values pairs are all of the values
-      the propagator pruned (using the variable's prune_value method). 
-      bt_search NEEDS to know this in order to correctly restore these 
+      the propagator pruned (using the variable's prune_value method).
+      bt_search NEEDS to know this in order to correctly restore these
       values when it undoes a variable assignment.
 
-      NOTE propagator SHOULD NOT prune a value that has already been 
+      NOTE propagator SHOULD NOT prune a value that has already been
       pruned! Nor should it prune a value twice
 
       PROPAGATOR called with newVar = None
       PROCESSING REQUIRED:
-        for plain backtracking (where we only check fully instantiated 
-        constraints) 
+        for plain backtracking (where we only check fully instantiated
+        constraints)
         we do nothing...return true, []
 
         for forward checking (where we only check constraints with one
         remaining variable)
-        we look for unary constraints of the csp (constraints whose scope 
+        we look for unary constraints of the csp (constraints whose scope
         contains only one variable) and we forward_check these constraints.
 
         for gac we establish initial GAC by initializing the GAC queue
-        with all constaints of the csp
+        with all constraints of the csp
 
 
       PROPAGATOR called with newVar = a variable V
@@ -61,29 +61,91 @@
    '''
 
 def prop_BT(csp, newVar=None):
-    '''Do plain backtracking propagation. That is, do no 
+    '''Do plain backtracking propagation. That is, do no
     propagation at all. Just check fully instantiated constraints'''
-    
+
+    # no newly assigned variable
     if not newVar:
+        # return True, no pruned values
         return True, []
+    # iterate over all constraints containing most recently assigned variable
     for c in csp.get_cons_with_var(newVar):
+        # if all variables of constraint are assigned
         if c.get_n_unasgn() == 0:
+            # get scope of the constraint
             vals = []
             vars = c.get_scope()
+            # record values of all assigned variables in constraint
             for var in vars:
                 vals.append(var.get_assigned_value())
+            # if constraint is not satisfied, return False, no pruned values
             if not c.check(vals):
                 return False, []
+    # every constraint with fully assigned variables is satisfied.
     return True, []
 
 def prop_FC(csp, newVar=None):
-    '''Do forward checking. That is check constraints with 
-       only one uninstantiated variable. Remember to keep 
+    '''Do forward checking. That is check constraints with
+       only one uninstantiated variable. Remember to keep
        track of all pruned variable,value pairs and return '''
 #IMPLEMENT
+    # Boolean to indicate whether ANY constraint is unsatisfiable
+    satisfiable = True
+    # maintain list of pruned var, value pairs
+    pruned = []
+    # if no new variable assigned, FC all unary constraints in csp
+    if not newVar:
+        # FC all unary constraints
+        for constraint in csp.get_all_cons():
+            if len(constraint.get_scope()) == 1:
+                satisfiable = _FC(constraint, constraint.get_scope[0], pruned)
+                # DWO for var in constraint, return False and pruned for restore
+                if not satisfiable:
+                    return False, pruned
+    # we have most recently assigned variable
+    else:
+        # FC check all constraints with newVar in scope and ONE unassigned variable
+        for constraint in csp.get_cons_with_var(newVar):
+            if len(constraint.get_unasgn_vars()) == 1:
+               satisfiable = _FC(constraint, constraint.get_unasgn_vars()[0], pruned)
+               # DWO for var in constraint, return False and pruned for restore
+               if not satisfiable:
+                   return False, pruned
+    # all constraints were satisfiable using FC, return True and pruned list
+    if satisfiable:
+        return True, pruned
+    #TODO: maybe just initialize list to be FC'd and return _FC(list) or is this inefficient?
+
+# HELPER FUNCTION FOR FORWARD CHECKING
+def _FC(cons, var, pruned):
+    """
+    Return True iff constraint is satisfiable with respect to var,
+    update list of pruned
+
+    :param cons: Constraint to forward check
+    :type cons: Constraint
+    :param var: Variable being checked for satisfying constraint
+    :type var: Variable
+    :param pruned: List of pruned var, value pairs
+    :type pruned: List of Variable, Int tuples
+    :return: Boolean indicating whether var had DWO
+    :rtype: Boolean
+    """
+    # iterate over CURRENT domain of values for var
+    for value in var.cur_domain():
+        # if value satisfies constraint, or equivalently, if it "has support"
+        if cons.has_support(var, value):
+            # nothing to prune, return True
+            return True
+        # value does not satisfy constraint, return False after pruning!
+        else:
+            pruned.append((var, value))
+            var.prune_value(value)
+            return False
+
 
 def prop_GAC(csp, newVar=None):
-    '''Do GAC propagation. If newVar is None we do initial GAC enforce 
+    '''Do GAC propagation. If newVar is None we do initial GAC enforce
        processing all constraints. Otherwise we do GAC enforce with
        constraints containing newVar on GAC Queue'''
 #IMPLEMENT
