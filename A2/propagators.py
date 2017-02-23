@@ -12,17 +12,17 @@
       to the variables and constraints of the problem. The assigned variables
       can be accessed via methods, the values assigned can also be accessed.
 
-      newVar (newly instaniated variable) is an optional argument.
+      newVar (newly instantiated variable) is an optional argument.
       if newVar is not None:
           then newVar is the most
            recently assigned variable of the search.
       else:
-          progator is called before any assignments are made
+          propagator is called before any assignments are made
           in which case it must decide what processing to do
            prior to any variables being assigned. SEE BELOW
 
        The propagator returns True/False and a list of (Variable, Value) pairs.
-       Return is False if a deadend has been detected by the propagator.
+       Return is False if a dead-end has been detected by the propagator.
        in this case bt_search will backtrack
        return is true if we can continue.
 
@@ -88,7 +88,6 @@ def prop_FC(csp, newVar=None):
     '''Do forward checking. That is check constraints with
        only one uninstantiated variable. Remember to keep
        track of all pruned variable,value pairs and return '''
-#IMPLEMENT
     # Boolean to indicate whether ANY constraint is unsatisfiable
     satisfiable = True
     # maintain list of pruned var, value pairs
@@ -128,24 +127,76 @@ def _FC(cons, var, pruned):
     :type var: Variable
     :param pruned: List of pruned var, value pairs
     :type pruned: List of Variable, Int tuples
-    :return: Boolean indicating whether var had DWO
+    :return: Boolean indicating whether var did NOT DWO
     :rtype: Boolean
     """
     # iterate over CURRENT domain of values for var
     for value in var.cur_domain():
-        # if value satisfies constraint, or equivalently, if it "has support"
-        if cons.has_support(var, value):
-            # nothing to prune, return True
-            return True
-        # value does not satisfy constraint, return False after pruning!
-        else:
+        # value does not satisfy constraint, prune!
+        if not cons.has_support(var, value):
             pruned.append((var, value))
             var.prune_value(value)
-            return False
+            # check for DWO, return False since unsatisfiable
+            if var.cur_domain_size() == 0:
+                return False
+    # no DWO, return True
+    return True
 
 
 def prop_GAC(csp, newVar=None):
     '''Do GAC propagation. If newVar is None we do initial GAC enforce
        processing all constraints. Otherwise we do GAC enforce with
        constraints containing newVar on GAC Queue'''
-#IMPLEMENT
+    # initialize queue to keep track of possibly unsatisfied constraints
+    cons_queue = []
+    # list of pruned
+    pruned = []
+    satisfiable = True
+    # if no assigned variable, queue all constraints for pre-processing
+    if not newVar:
+        for cons in csp.get_all_cons():
+            cons_queue.append(cons)
+    # given most recently assigned variable, queue constraints with newVar
+    else:
+        for cons in csp.get_cons_with_var(newVar):
+            cons_queue.append(cons)
+    # execute _GAC_Enforce on constraints
+    satisfiable = _GAC_Enforce(csp, cons_queue, pruned)
+    # if any constraint is not satisfiable, return False with pruned
+    if not satisfiable:
+        return False, pruned
+    else:
+        return True, pruned
+
+def _GAC_Enforce(csp, cons_queue, pruned):
+    """
+    Return True iff ALL of the queued constraints are satisfiable
+
+    :param cons_queue: potentially unsatisfied constraints for processing
+    :type cons_queue: list of Constraints
+    :param pruned: list of pruned
+    :type pruned: [(Variable, Int)]
+    :return: Return True iff ALL of the queued constraints are satisfiable
+    :rtype: Boolean
+    """
+    # process every constraint so ALL var are Arc Consistent
+    while len(cons_queue) > 0:
+        # check if each variable has consistent values
+        cons = cons_queue.pop()
+        # if constraint has unassigned variables
+        if cons.get_n_unasgn() > 0:
+            # establish consistency for all values in all variables
+            for var in cons.get_unasgn_vars():
+                for val in var.cur_domain():
+                    # value is not consistent, prune
+                    if not cons.has_support(var, val):
+                        pruned.append((var,val))
+                        var.prune_value(val)
+                        # check for DWO
+                        if var.cur_domain_size == 0:
+                            return False
+                        # add affected constraints to queue
+                        for affected_cons in csp.get_cons_with_var(var):
+                            cons_queue.append(affected_cons)
+    # every constraint is Arc Consistent
+    return  True
