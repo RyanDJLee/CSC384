@@ -298,19 +298,17 @@ def _make_Row_Cons(row_lst, cons_lst, row):
     var_dom_lst = [var.domain() for var in row_lst]
     # user itertools to get all satisfying possible tuples
     for tuple in itertools.product(*var_dom_lst):
-        valid = True
-        for value in tuple:
-            if tuple.count(value) > 1:
-                break
-        else:
-            sat_tuples.append(tuple)
+        # in order for the tuple to be satisfiable, it must consist of unique
+        # ordering of 10 numbers {0..9} => SUM MUST BE 45
+        if sum(tuple) == 45:
+            # create dictionary of counts for constant time access, but break
+            # once count higher than 1 is found!
+            counts = dict()
+            for i in tuple:
+                if counts.get(i, 0) > 0:
+                    break
+                counts[i] = counts.get(i, 0) + 1
+            else:
+                sat_tuples.append(tuple)
     row_Cons.add_satisfying_tuples(sat_tuples)
     cons_lst.append(row_Cons)
-
-
-#TODO:
-# can either reduce number of comparisons to determine NON-satisfying n-tuple
-# OR WE CAN TRY TO FIND ANOTHER WAY!!!
-
-#TODO: helper function that checks whether a tuple is all diff?
-#TODO: how can we check for this..? SORT, KEEP "CURR" AS SOON AS CURR==NEXT BREAK?
