@@ -304,6 +304,8 @@ def _make_Row_Cons(row_lst, cons_lst, row):
                 break
         else:
             sat_tuples.append(tuple)
+    row_Cons.add_satisfying_tuples(sat_tuples)
+    cons_lst.append(row_Cons)
 
 
 #TODO:
