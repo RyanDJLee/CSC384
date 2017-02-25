@@ -253,7 +253,7 @@ def tenner_csp_model_2(initial_tenner_board):
         # call helper to derive constraint for this column
         _make_Col_Cons(var_col, initial_tenner_board[1][col], cons_lst, col)
     # now instantiate the CSP model
-    tenner_csp_model_1 = CSP("tenner_csp_model_1", var_lst)
+    tenner_csp_model_1 = CSP("tenner_csp_model_2", var_lst)
     for cons in cons_lst:
         tenner_csp_model_1.add_constraint(cons)
     return tenner_csp_model_1, var_matrix
@@ -299,13 +299,16 @@ def _make_Row_Cons(row_lst, cons_lst, row):
     # user itertools to get all satisfying possible tuples
     for tuple in itertools.product(*var_dom_lst):
         valid = True
-        for i in range(10):
-            for j in range(10):
-                if i < j:
-                    if tuple[i]==tuple[j]:
-                        valid = False
-                        break
-        if valid: # all values are different
+        for value in tuple:
+            if tuple.count(value) > 1:
+                break
+        else:
             sat_tuples.append(tuple)
-    row_Cons.add_satisfying_tuples(sat_tuples)
-    cons_lst.append(row_Cons)
+
+
+#TODO:
+# can either reduce number of comparisons to determine NON-satisfying n-tuple
+# OR WE CAN TRY TO FIND ANOTHER WAY!!!
+
+#TODO: helper function that checks whether a tuple is all diff?
+#TODO: how can we check for this..? SORT, KEEP "CURR" AS SOON AS CURR==NEXT BREAK?
