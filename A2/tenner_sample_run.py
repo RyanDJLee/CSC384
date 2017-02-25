@@ -35,7 +35,7 @@ if __name__ == "__main__":
         solver.bt_search(prop_FC)
         print("Solution")
         print_tenner_soln(var_array)
-        
+
         print("Using Model 2")
         csp, var_array = tenner_csp_model_2(b)
         solver = BT(csp)

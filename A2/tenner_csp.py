@@ -79,8 +79,15 @@ def tenner_csp_model_1(initial_tenner_board):
             else: #else, domain is restricted to pre-assigned value
                 curr_var = Variable("V[{}][{}]".format(i,j), [entry])
                 var_lst.append(curr_var)
-            # we are "building" left to right, top down.. take adv of this
-            _make_Cons(curr_var, cons_lst, num_rows, var_lst)
+    # create var matrix for returning
+    var_matrix = [[0 for x in range(10)] for y in range(num_rows)]
+    for i in range(0, num_rows):
+        # we have 10 columns
+        for j in range(0, 10):
+            var_matrix[i][j] = var_lst[i*10+j]
+    for row in var_matrix:
+        for var in row:
+            _make_Cons(var, cons_lst, num_rows, var_lst)
     # final set of constraints for sum of each column; n-ary constraint per col
     for col in range(0, 10):
         # create list of domains of each variable in that column
@@ -89,12 +96,6 @@ def tenner_csp_model_1(initial_tenner_board):
             var_col.append(var_lst[row*10+col]) # Var[i][j] = var_lst[i*10+j]
         # call helper to derive constraint for this column
         _make_Col_Cons(var_col, initial_tenner_board[1][col], cons_lst, col)
-    # create var matrix for returning
-    var_matrix = [[0 for x in range(10)] for y in range(num_rows)]
-    for i in range(0, num_rows):
-        # we have 10 columns
-        for j in range(0, 10):
-            var_matrix[i][j] = var_lst[i*10+j]
     # now instantiate the CSP model
     tenner_csp_model_1 = CSP("tenner_csp_model_1", var_lst)
     for cons in cons_lst:
@@ -116,13 +117,18 @@ def _make_Cons(var, cons_lst, num_rows, var_lst):
     index = var.name.split("][")
     i, j = int(index[0][2:]), int(index[1].split("]")[0])
     # for L, LU, U, UR create binary NOT-EQUALS constraint
-    for (m,n) in [(0,-1),(-1,-1),(-1,0),(-1,1)]:
+    process = [(0,-1),(-1,-1),(-1,0),(-1,1)]
+    k = j
+    # for each EXISTING cell more than one to the left, add corresp. constraint
+    while k > 1:
+        process.append((0,-k))
+        k -= 1
+    for (m,n) in process:
         row = i+m
         col = j+n
         # EXISTING ADJACENT CELL
         if (row >= 0 and row <= num_rows) and (col >= 0 and col <= 9):
             # create binary NOT-EQUALS constraint
-            # TODO: CHECK IF THIS WORKS!!! O(1) way to find corresponding index of variable in index is to add
             # it's row and column indices
             curr_v1 = var_lst[row*10+col]
             curr_v2 = var_lst[i*10+j]
@@ -130,12 +136,12 @@ def _make_Cons(var, cons_lst, num_rows, var_lst):
             # create satisfying tuples for constraint
             sat_tuples = []
             # derive satisfying tuples for the two variables
-            _adj_Sat_tuples(curr_v1, curr_v2, sat_tuples)
+            _notEq_Sat_tuples(curr_v1, curr_v2, sat_tuples)
             # add all the tuples to the constraint
             curr_cons.add_satisfying_tuples(sat_tuples)
             cons_lst.append(curr_cons)
 
-def _adj_Sat_tuples(var1, var2, sat_tuples):
+def _notEq_Sat_tuples(var1, var2, sat_tuples):
     '''
     Derive satisfying tuples for given adjacent variables.
 
@@ -153,10 +159,6 @@ def _adj_Sat_tuples(var1, var2, sat_tuples):
             sat_tuples.append(tuple)
 
 def _make_Col_Cons(var_lst, total, cons_lst, col):
-    '''
-    return true iff sum of entries in each row in column is equal to given sum
-    for every
-    '''
     col_Cons = Constraint("Column{}".format(col), var_lst)
     sat_tuples = []
     # get list of domains for iterating
@@ -212,3 +214,98 @@ def tenner_csp_model_2(initial_tenner_board):
     '''
 
 #IMPLEMENT
+    # initialize list of variables to return with CSP
+    var_lst = []
+    # CONSTRAINTS
+    cons_lst = []
+    num_rows = len(initial_tenner_board[0])
+    for i in range(0, num_rows):
+        # we have 10 columns
+        for j in range(0, 10):
+            entry = initial_tenner_board[0][i][j]
+            if entry == -1: # if -1, domain is {0,9}
+                curr_var = Variable("V[{}][{}]".format(i,j), list(range(0,10)))
+                var_lst.append(curr_var)
+            else: #else, domain is restricted to pre-assigned value
+                curr_var = Variable("V[{}][{}]".format(i,j), [entry])
+                var_lst.append(curr_var)
+    # create var matrix for returning
+    var_matrix = [[0 for x in range(10)] for y in range(num_rows)]
+    for i in range(0, num_rows):
+        # we have 10 columns
+        for j in range(0, 10):
+            var_matrix[i][j] = var_lst[i*10+j]
+    for row in var_matrix:
+        for var in row:
+            _make_Cons_2(var, cons_lst, num_rows, var_lst)
+    # n-ary NOT EQUAL row constraints
+    for row in range(num_rows):
+        row_lst = []
+        for col in range(10):
+            row_lst.append(var_lst[row*10+col])
+        _make_Row_Cons(row_lst, cons_lst, row)
+    # constraints for sum of each column; n-ary constraint per col
+    for col in range(0, 10):
+        # create list of domains of each variable in that column
+        var_col = []
+        for row in range (0, num_rows):
+            var_col.append(var_lst[row*10+col]) # Var[i][j] = var_lst[i*10+j]
+        # call helper to derive constraint for this column
+        _make_Col_Cons(var_col, initial_tenner_board[1][col], cons_lst, col)
+    # now instantiate the CSP model
+    tenner_csp_model_1 = CSP("tenner_csp_model_1", var_lst)
+    for cons in cons_lst:
+        tenner_csp_model_1.add_constraint(cons)
+    return tenner_csp_model_1, var_matrix
+
+def _make_Cons_2(var, cons_lst, num_rows, var_lst):
+    '''
+    Instantiates and appends all required constraints with var in scope.
+
+    :param var:
+    :type var: Variable
+    :param cons_lst:
+    :type cons_lst: [Constraint]
+    :return:
+    :rtype: None
+    '''
+    # need to find row and index of variable from it's name
+    index = var.name.split("][")
+    i, j = int(index[0][2:]), int(index[1].split("]")[0])
+    # for LU, U, UR create binary NOT-EQUALS constraint
+    for (m,n) in [(-1,-1),(-1,0),(-1,1)]:
+        row = i+m
+        col = j+n
+        # EXISTING ADJACENT CELL
+        if (row >= 0 and row <= num_rows) and (col >= 0 and col <= 9):
+            # create binary NOT-EQUALS constraint
+            # it's row and column indices
+            curr_v1 = var_lst[row*10+col]
+            curr_v2 = var_lst[i*10+j]
+            curr_cons = Constraint("C(A[{}][{}])(A[{}][{}]".format(row,col,i,j), [curr_v1, curr_v2])
+            # create satisfying tuples for constraint
+            sat_tuples = []
+            # derive satisfying tuples for the two variables
+            _notEq_Sat_tuples(curr_v1, curr_v2, sat_tuples)
+            # add all the tuples to the constraint
+            curr_cons.add_satisfying_tuples(sat_tuples)
+            cons_lst.append(curr_cons)
+
+def _make_Row_Cons(row_lst, cons_lst, row):
+    row_Cons = Constraint("Row{}".format(row), row_lst)
+    sat_tuples = []
+    # get list of domains for iterating
+    var_dom_lst = [var.domain() for var in row_lst]
+    # user itertools to get all satisfying possible tuples
+    for tuple in itertools.product(*var_dom_lst):
+        valid = True
+        for i in range(10):
+            for j in range(10):
+                if i < j:
+                    if tuple[i]==tuple[j]:
+                        valid = False
+                        break
+        if valid: # all values are different
+            sat_tuples.append(tuple)
+    row_Cons.add_satisfying_tuples(sat_tuples)
+    cons_lst.append(row_Cons)
