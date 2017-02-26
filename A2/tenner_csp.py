@@ -64,45 +64,44 @@ def tenner_csp_model_1(initial_tenner_board):
        model_1 also constraints n-nary constraints of sum constraints for each
        column.
     '''
-    # initialize list of variables to return with CSP
-    var_lst = []
     # CONSTRAINTS
     cons_lst = []
     num_rows = len(initial_tenner_board[0])
+    var_matrix = [[0 for x in range(10)] for y in range(num_rows)]
     for i in range(0, num_rows):
         # we have 10 columns
         for j in range(0, 10):
             entry = initial_tenner_board[0][i][j]
             if entry == -1: # if -1, domain is {0,9}
                 curr_var = Variable("V[{}][{}]".format(i,j), list(range(0,10)))
-                var_lst.append(curr_var)
+                var_matrix[i][j] = curr_var
             else: #else, domain is restricted to pre-assigned value
                 curr_var = Variable("V[{}][{}]".format(i,j), [entry])
-                var_lst.append(curr_var)
-    # create var matrix for returning
-    var_matrix = [[0 for x in range(10)] for y in range(num_rows)]
-    for i in range(0, num_rows):
-        # we have 10 columns
-        for j in range(0, 10):
-            var_matrix[i][j] = var_lst[i*10+j]
-    for row in var_matrix:
-        for var in row:
-            _make_Cons(var, cons_lst, num_rows, var_lst)
+                var_matrix[i][j] = curr_var
+    for row in range(num_rows):
+        for col in range(10):
+            _make_Cons(cons_lst, num_rows, var_matrix, row, col)
     # final set of constraints for sum of each column; n-ary constraint per col
     for col in range(0, 10):
         # create list of domains of each variable in that column
         var_col = []
         for row in range (0, num_rows):
-            var_col.append(var_lst[row*10+col]) # Var[i][j] = var_lst[i*10+j]
+            var_col.append(var_matrix[row][col]) # Var[i][j] = var_lst[i*10+j]
         # call helper to derive constraint for this column
         _make_Col_Cons(var_col, initial_tenner_board[1][col], cons_lst, col)
+    # initialize list of variables to return with CSP
+    var_lst = []
+    for row in var_matrix:
+        for var in row:
+            var_lst.append(var)
     # now instantiate the CSP model
+    var_matrix = []
     tenner_csp_model_1 = CSP("tenner_csp_model_1", var_lst)
     for cons in cons_lst:
         tenner_csp_model_1.add_constraint(cons)
     return tenner_csp_model_1, var_matrix
 
-def _make_Cons(var, cons_lst, num_rows, var_lst):
+def _make_Cons(cons_lst, num_rows, var_matrix, _i, _j):
     '''
     Instantiates and appends all required constraints with var in scope.
 
@@ -113,9 +112,7 @@ def _make_Cons(var, cons_lst, num_rows, var_lst):
     :return:
     :rtype: None
     '''
-    # need to find row and index of variable from it's name
-    index = var.name.split("][")
-    i, j = int(index[0][2:]), int(index[1].split("]")[0])
+    i, j = _i, _j
     # for L, LU, U, UR create binary NOT-EQUALS constraint
     process = [(0,-1),(-1,-1),(-1,0),(-1,1)]
     k = j
@@ -130,8 +127,8 @@ def _make_Cons(var, cons_lst, num_rows, var_lst):
         if (row >= 0 and row <= num_rows) and (col >= 0 and col <= 9):
             # create binary NOT-EQUALS constraint
             # it's row and column indices
-            curr_v1 = var_lst[row*10+col]
-            curr_v2 = var_lst[i*10+j]
+            curr_v1 = var_matrix[row][col]
+            curr_v2 = var_matrix[i][j]
             curr_cons = Constraint("C(A[{}][{}])(A[{}][{}]".format(row,col,i,j), [curr_v1, curr_v2])
             # create satisfying tuples for constraint
             sat_tuples = []
@@ -212,53 +209,52 @@ def tenner_csp_model_2(initial_tenner_board):
        model_2 should create these all-different constraints between the relevant
        variables.
     '''
-
-#IMPLEMENT
-    # initialize list of variables to return with CSP
-    var_lst = []
     # CONSTRAINTS
     cons_lst = []
     num_rows = len(initial_tenner_board[0])
+    var_matrix = [[0 for x in range(10)] for y in range(num_rows)]
     for i in range(0, num_rows):
         # we have 10 columns
         for j in range(0, 10):
             entry = initial_tenner_board[0][i][j]
             if entry == -1: # if -1, domain is {0,9}
                 curr_var = Variable("V[{}][{}]".format(i,j), list(range(0,10)))
-                var_lst.append(curr_var)
+                var_matrix[i][j] = curr_var
             else: #else, domain is restricted to pre-assigned value
                 curr_var = Variable("V[{}][{}]".format(i,j), [entry])
-                var_lst.append(curr_var)
-    # create var matrix for returning
-    var_matrix = [[0 for x in range(10)] for y in range(num_rows)]
-    for i in range(0, num_rows):
-        # we have 10 columns
-        for j in range(0, 10):
-            var_matrix[i][j] = var_lst[i*10+j]
-    for row in var_matrix:
-        for var in row:
-            _make_Cons_2(var, cons_lst, num_rows, var_lst)
+                var_matrix[i][j] = curr_var
+    for row in range(num_rows):
+        for col in range(10):
+            _make_Cons_2(cons_lst, num_rows, var_matrix, row, col)
     # n-ary NOT EQUAL row constraints
     for row in range(num_rows):
         row_lst = []
         for col in range(10):
-            row_lst.append(var_lst[row*10+col])
+            row_lst.append(var_matrix[row][col])
         _make_Row_Cons(row_lst, cons_lst, row)
     # constraints for sum of each column; n-ary constraint per col
     for col in range(0, 10):
         # create list of domains of each variable in that column
         var_col = []
         for row in range (0, num_rows):
-            var_col.append(var_lst[row*10+col]) # Var[i][j] = var_lst[i*10+j]
+            var_col.append(var_matrix[row][col]) # Var[i][j] = var_lst[i*10+j]
         # call helper to derive constraint for this column
         _make_Col_Cons(var_col, initial_tenner_board[1][col], cons_lst, col)
+    # initialize list of variables to return with CSP
+    var_lst = []
+    for row in var_matrix:
+        for var in row:
+            var_lst.append(var)
+    # now instantiate the CSP model
+    var_matrix = []
+    tenner_csp_model_1 = CSP("tenner_csp_model_1", var_lst)
     # now instantiate the CSP model
     tenner_csp_model_1 = CSP("tenner_csp_model_2", var_lst)
     for cons in cons_lst:
         tenner_csp_model_1.add_constraint(cons)
     return tenner_csp_model_1, var_matrix
 
-def _make_Cons_2(var, cons_lst, num_rows, var_lst):
+def _make_Cons_2(cons_lst, num_rows, var_matrix, _i, _j):
     '''
     Instantiates and appends all required constraints with var in scope.
 
@@ -269,9 +265,7 @@ def _make_Cons_2(var, cons_lst, num_rows, var_lst):
     :return:
     :rtype: None
     '''
-    # need to find row and index of variable from it's name
-    index = var.name.split("][")
-    i, j = int(index[0][2:]), int(index[1].split("]")[0])
+    i, j = _i, _j
     # for LU, U, UR create binary NOT-EQUALS constraint
     for (m,n) in [(-1,-1),(-1,0),(-1,1)]:
         row = i+m
@@ -280,8 +274,8 @@ def _make_Cons_2(var, cons_lst, num_rows, var_lst):
         if (row >= 0 and row <= num_rows) and (col >= 0 and col <= 9):
             # create binary NOT-EQUALS constraint
             # it's row and column indices
-            curr_v1 = var_lst[row*10+col]
-            curr_v2 = var_lst[i*10+j]
+            curr_v1 = var_matrix[row][col]
+            curr_v2 = var_matrix[i][j]
             curr_cons = Constraint("C(A[{}][{}])(A[{}][{}]".format(row,col,i,j), [curr_v1, curr_v2])
             # create satisfying tuples for constraint
             sat_tuples = []
