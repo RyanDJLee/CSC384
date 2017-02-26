@@ -116,7 +116,6 @@ def prop_FC(csp, newVar=None):
     # all constraints were satisfiable using FC, return True and pruned list
     if satisfiable:
         return True, pruned
-    #TODO: maybe just initialize list to be FC'd and return _FC(list) or is this inefficient?
 
 # HELPER FUNCTION FOR FORWARD CHECKING
 def _FC(cons, var, pruned):
