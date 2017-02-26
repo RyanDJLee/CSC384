@@ -95,7 +95,6 @@ def tenner_csp_model_1(initial_tenner_board):
         for var in row:
             var_lst.append(var)
     # now instantiate the CSP model
-    var_matrix = []
     tenner_csp_model_1 = CSP("tenner_csp_model_1", var_lst)
     for cons in cons_lst:
         tenner_csp_model_1.add_constraint(cons)
@@ -246,13 +245,10 @@ def tenner_csp_model_2(initial_tenner_board):
         for var in row:
             var_lst.append(var)
     # now instantiate the CSP model
-    var_matrix = []
-    tenner_csp_model_1 = CSP("tenner_csp_model_1", var_lst)
-    # now instantiate the CSP model
-    tenner_csp_model_1 = CSP("tenner_csp_model_2", var_lst)
+    tenner_csp_model_2 = CSP("tenner_csp_model_2", var_lst)
     for cons in cons_lst:
-        tenner_csp_model_1.add_constraint(cons)
-    return tenner_csp_model_1, var_matrix
+        tenner_csp_model_2.add_constraint(cons)
+    return tenner_csp_model_2, var_matrix
 
 def _make_Cons_2(cons_lst, num_rows, var_matrix, _i, _j):
     '''

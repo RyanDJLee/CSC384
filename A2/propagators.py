@@ -59,6 +59,7 @@
 
          for gac we initialize the GAC queue with all constraints containing V.
    '''
+from collections import deque
 
 def prop_BT(csp, newVar=None):
     '''Do plain backtracking propagation. That is, do no
@@ -96,16 +97,18 @@ def prop_FC(csp, newVar=None):
     if not newVar:
         # FC all unary constraints
         for constraint in csp.get_all_cons():
-            if len(constraint.get_scope()) == 1:
-                satisfiable = _FC(constraint, constraint.get_scope[0], pruned)
-                # DWO for var in constraint, return False and pruned for restore
-                if not satisfiable:
-                    return False, pruned
+            scope = constraint.get_scope()
+            if len(scope) == 1:
+                if constraint.get_n_unasgn == 1:
+                    satisfiable = _FC(constraint, scope[0], pruned)
+                    # DWO for var in constraint, return False and pruned for restore
+                    if not satisfiable:
+                        return False, pruned
     # we have most recently assigned variable
     else:
         # FC check all constraints with newVar in scope and ONE unassigned variable
         for constraint in csp.get_cons_with_var(newVar):
-            if len(constraint.get_unasgn_vars()) == 1:
+            if constraint.get_n_unasgn() == 1:
                satisfiable = _FC(constraint, constraint.get_unasgn_vars()[0], pruned)
                # DWO for var in constraint, return False and pruned for restore
                if not satisfiable:
@@ -148,7 +151,7 @@ def prop_GAC(csp, newVar=None):
        processing all constraints. Otherwise we do GAC enforce with
        constraints containing newVar on GAC Queue'''
     # initialize queue to keep track of possibly unsatisfied constraints
-    cons_queue = []
+    cons_queue = deque()
     # list of pruned
     pruned = []
     satisfiable = True
@@ -161,12 +164,7 @@ def prop_GAC(csp, newVar=None):
         for cons in csp.get_cons_with_var(newVar):
             cons_queue.append(cons)
     # execute _GAC_Enforce on constraints
-    satisfiable = _GAC_Enforce(csp, cons_queue, pruned)
-    # if any constraint is not satisfiable, return False with pruned
-    if not satisfiable:
-        return False, pruned
-    else:
-        return True, pruned
+    return _GAC_Enforce(csp, cons_queue, pruned)
 
 def _GAC_Enforce(csp, cons_queue, pruned):
     """
@@ -194,9 +192,9 @@ def _GAC_Enforce(csp, cons_queue, pruned):
                         var.prune_value(val)
                         # check for DWO
                         if var.cur_domain_size == 0:
-                            return False
+                            return False, pruned
                         # add affected constraints to queue
                         for affected_cons in csp.get_cons_with_var(var):
                             cons_queue.append(affected_cons)
     # every constraint is Arc Consistent
-    return  True
+    return True, pruned
