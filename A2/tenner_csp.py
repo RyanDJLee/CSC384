@@ -1,10 +1,6 @@
-#Look for #IMPLEMENT tags in this file. These tags indicate what has
-#to be implemented to complete the warehouse domain.
-
 '''
 Construct and return Tenner Grid CSP models.
 '''
-
 from cspbase import *
 import itertools
 
