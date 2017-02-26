@@ -180,20 +180,18 @@ def _GAC_Enforce(csp, cons_queue, pruned):
     while len(cons_queue) > 0:
         # check if each variable has consistent values
         cons = cons_queue.pop()
-        # if constraint has unassigned variables
-        if cons.get_n_unasgn() > 0:
-            # establish consistency for all values in all variables
-            for var in cons.get_unasgn_vars():
-                for val in var.cur_domain():
-                    # value is not consistent, prune
-                    if not cons.has_support(var, val):
-                        pruned.append((var,val))
-                        var.prune_value(val)
-                        # check for DWO
-                        if var.cur_domain_size == 0:
-                            return False, pruned
-                        # add affected constraints to queue
-                        for affected_cons in csp.get_cons_with_var(var):
-                            cons_queue.append(affected_cons)
+        for var in cons.get_unasgn_vars():
+            for val in var.cur_domain():
+                # value is not consistent, prune
+                if not cons.has_support(var, val):
+                    pruned.append((var,val))
+                    var.prune_value(val)
+                    # check for DWO
+                    if var.cur_domain_size == 0:
+                        return False, pruned
+                    # add affected constraints to queue
+                    for affected_cons in csp.get_cons_with_var(var):
+                        cons_queue.append(affected_cons)
     # every constraint is Arc Consistent
     return True, pruned
+
